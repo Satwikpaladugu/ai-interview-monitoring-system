@@ -22,6 +22,7 @@ import numpy as np
 import json
 import os
 import time
+import tempfile
 from deepface import DeepFace
 
 # ════════════════════════════════════════════════════════════════
@@ -200,61 +201,63 @@ def start_interview():
     if file.filename == '':
         return jsonify({"error": "Empty filename"}), 400
     
-    # Save reference image
-    profile_filename = f"reference_{candidate_id}.jpg"
-    profile_path = os.path.join(app.config['UPLOAD_FOLDER'], profile_filename)
-    file.save(profile_path)
-
-    print("=" * 50)
-    print("PROFILE PATH:", profile_path)
-
-    import cv2
-    img = cv2.imread(profile_path)
-
-    print("IMG:", img)
-    print("IMG SHAPE:", img.shape if img is not None else None)
-    print("=" * 50)
+    # Load reference image into temporary file (TEMPORARY - deleted immediately after processing)
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+        tmp_path = tmp.name
+        file.save(tmp_path)
     
-    # Generate embedding from reference image
     try:
-        results = DeepFace.represent(
-            img_path=profile_path,
-            model_name=MODEL,
-            detector_backend=DETECTOR,
-            enforce_detection=True
-        )
-    except ValueError as e:
-        os.remove(profile_path)
-        return jsonify({"error": "No face found in reference image"}), 400
-    except Exception as e:
-        os.remove(profile_path)
-        return jsonify({"error": f"Failed to process reference image: {str(e)}"}), 400
-    
-    if len(results) == 0:
-        os.remove(profile_path)
-        return jsonify({"error": "No face detected in reference image"}), 400
-    
-    if len(results) > 1:
-        os.remove(profile_path)
-        return jsonify({"error": "Multiple faces in reference image"}), 400
-    
-    # Validate face size
-    facial_area = results[0].get("facial_area", {})
-    face_w = facial_area.get("w", 0)
-    face_h = facial_area.get("h", 0)
-    
-    if face_w < 80 or face_h < 80:
-        os.remove(profile_path)
-        return jsonify({"error": "Face in reference image is too small"}), 400
-    
-    # Store candidate
-    candidate_store[candidate_id] = {
-        "embedding":     results[0]["embedding"],
-        "profile_image": profile_filename,
-        "candidate_name": candidate_name,
-        "loaded_at":     time.strftime("%Y-%m-%d %H:%M:%S"),
-        "face_size":     f"{face_w}x{face_h}px"
-    }
+        print("=" * 50)
+        print("TEMP PROFILE PATH:", tmp_path)
+
+        img = cv2.imread(tmp_path)
+
+        print("IMG:", img)
+        print("IMG SHAPE:", img.shape if img is not None else None)
+        print("=" * 50)
+        
+        # Generate embedding from reference image
+        try:
+            results = DeepFace.represent(
+                img_path=tmp_path,
+                model_name=MODEL,
+                detector_backend=DETECTOR,
+                enforce_detection=True
+            )
+        except ValueError as e:
+            return jsonify({"error": "No face found in reference image"}), 400
+        except Exception as e:
+            return jsonify({"error": f"Failed to process reference image: {str(e)}"}), 400
+        
+        if len(results) == 0:
+            return jsonify({"error": "No face detected in reference image"}), 400
+        
+        if len(results) > 1:
+            return jsonify({"error": "Multiple faces in reference image"}), 400
+        
+        # Validate face size
+        facial_area = results[0].get("facial_area", {})
+        face_w = facial_area.get("w", 0)
+        face_h = facial_area.get("h", 0)
+        
+        if face_w < 80 or face_h < 80:
+            return jsonify({"error": "Face in reference image is too small"}), 400
+        
+        # Store candidate (ONLY embedding in memory, reference image file is temporary)
+        candidate_store[candidate_id] = {
+            "embedding":     results[0]["embedding"],
+            "candidate_name": candidate_name,
+            "loaded_at":     time.strftime("%Y-%m-%d %H:%M:%S"),
+            "face_size":     f"{face_w}x{face_h}px"
+        }
+    finally:
+        # Delete temporary file immediately after processing
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+                print(f"[CLEANUP] Deleted temporary reference image: {tmp_path}")
+            except Exception as e:
+                print(f"[ERROR] Failed to delete temp file: {e}")
     
     # Initialize session state
     session_state[candidate_id] = {
@@ -619,6 +622,11 @@ def terminate_interview():
     
     session_state[candidate_id]["terminated"] = True
     
+    # Remove candidate from store (embedding was only in memory)
+    if candidate_id in candidate_store:
+        del candidate_store[candidate_id]
+        print(f"[CLEANUP] Removed candidate {candidate_id} from memory")
+    
     return jsonify({
         "success":       True,
         "candidate_id":  candidate_id,
@@ -679,6 +687,11 @@ def reset_session():
     
     if candidate_id not in session_state:
         return jsonify({"error": "Session not found"}), 404
+    
+    # Remove candidate from store (embedding was only in memory)
+    if candidate_id in candidate_store:
+        del candidate_store[candidate_id]
+        print(f"[CLEANUP] Removed candidate {candidate_id} from memory")
     
     session_state[candidate_id] = {
         "warning_count": 0,
