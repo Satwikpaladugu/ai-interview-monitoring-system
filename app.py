@@ -419,6 +419,41 @@ def verify_frame():
         return jsonify(result)
     
     # ──────────────────────────────────────────────────────────
+    # CHECK B2: MULTIPLE PERSONS DETECTED
+    # ──────────────────────────────────────────────────────────
+    if len(results) > 1:
+        state["warning_count"] += 1
+        state["fail_streak"] += 1
+        status = "multiple_faces"
+        confidence = 0
+        verified = False
+        distance = None
+        reason_multiple = f"Multiple persons detected ({len(results)} faces)"
+        
+        terminate_now = (
+            state["fail_streak"] >= MAX_FAIL_STREAK or
+            state["warning_count"] >= MAX_WARNINGS
+        )
+        if terminate_now:
+            state["terminated"] = True
+        
+        result = build_result(
+            candidate_id, state,
+            status=status, confidence=confidence,
+            distance=distance, verified=verified,
+            terminate=terminate_now,
+            reason=reason_multiple,
+            brightness=brightness_val
+        )
+        log_check(candidate_id, result)
+        cleanup()
+        
+        result["suggestions"] = ["Only one person should be visible to the camera"]
+        print(f"[MULTIPLE FACES] {reason_multiple}")
+        print(json.dumps(result, indent=2))
+        return jsonify(result)
+    
+    # ──────────────────────────────────────────────────────────
     # CHECK C: FACE SIZE & CENTERING
     # ──────────────────────────────────────────────────────────
     facial_area = results[0].get("facial_area", {})
