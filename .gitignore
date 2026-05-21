@@ -1,0 +1,50 @@
+# Virtual Environment
+venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+logs/
+*.log
+backend.err.log
+backend.out.log
+frontend.err.log
+frontend.out.log
+
+# Uploads & Evidence
+uploads/
+evidence/
+admin_data/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Pytest
+.pytest_cache/
+
+# Environment Files
+.env
+.env.local
+
+# Build Files
+dist/
+build/
+
+# Temporary Files
+temp/
+tmp/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Coverage
+.coverage
+htmlcov/

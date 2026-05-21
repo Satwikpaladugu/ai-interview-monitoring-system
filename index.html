@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>interview.ai — Live Interview Monitor</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0ec;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding: 0 4px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .live-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(1.2);
+            }
+        }
+
+        #health-pill {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid #2a2a38;
+            background: #16161e;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        #health-pill.online {
+            color: #22c55e;
+            border-color: rgba(34, 197, 94, 0.3);
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        #health-pill.offline {
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        #welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+        }
+
+        #welcome-screen.hidden {
+            display: none;
+        }
+
+        .welcome-card {
+            background: rgba(22, 22, 30, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 20px;
+            padding: 48px;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .welcome-card h1 {
+            font-size: 32px;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+
+        .welcome-card p {
+            font-size: 14px;
+            color: #999;
+            line-height: 1.8;
+            margin-bottom: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            background: #0d0d10;
+            border: 1px solid #2a2a38;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #e0e0ec;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, #6366f1, #818cf8);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background: #2a2a38;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .error-text {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 12px;
+            min-height: 16px;
+        }
+
+        #reference-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        #reference-screen.active {
+            display: flex;
+        }
+
+        .reference-container {
+            background: rgba(22, 22, 30, 0.8);
+            backdrop-filter: blur(10px);
+            border: 2px solid #6366f1;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .reference-container h2 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: #fff;
+        }
+
+        .reference-container p {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+
+        .reference-preview {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #0d0d10;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #reference-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .reference-preview.has-capture {
+            border: 2px solid #22c55e;
+        }
+
+        .capture-button {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px 32px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .capture-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+        }
+
+        .capture-button:disabled {
+            background: #2a2a38;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .instructions-list {
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .instructions-list h3 {
+            font-size: 13px;
+            color: #818cf8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .instructions-list ul {
+            list-style: none;
+            font-size: 12px;
+            color: #999;
+            line-height: 2;
+        }
+
+        .instructions-list li:before {
+            content: "✓ ";
+            color: #22c55e;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        #monitor-screen {
+            display: none;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        #monitor-screen.active {
+            display: flex;
+        }
+
+        .video-panel {
+            flex: 0 0 auto;
+            position: relative;
+        }
+
+        #monitor-video {
+            width: 480px;
+            height: 360px;
+            border-radius: 16px;
+            object-fit: cover;
+            background: #0d0d10;
+            border: 2px solid #2a2a38;
+            transition: border-color 0.3s;
+            display: block;
+        }
+
+        #monitor-video.ok {
+            border-color: #22c55e;
+        }
+
+        #monitor-video.warn {
+            border-color: #f59e0b;
+        }
+
+        #monitor-video.error {
+            border-color: #ef4444;
+        }
+
+        .live-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #22c55e;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-panel {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        #status-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
+            border: 2px solid #6366f1;
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s;
+        }
+
+        #status-box.ok {
+            border-color: #22c55e;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+        }
+
+        #status-box.warn {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+        }
+
+        #status-box.error {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+        }
+
+        #status-box strong {
+            display: block;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        #status-box p {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            line-height: 1.4;
+        }
+
+        .counters {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .counter {
+            background: rgba(22, 22, 30, 0.8);
+            border: 1px solid #2a2a38;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .counter .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .counter .value.warning {
+            color: #f59e0b;
+        }
+
+        .counter .value.error {
+            color: #ef4444;
+        }
+
+        .counter .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+        }
+
+        .progress-section {
+            background: rgba(22, 22, 30, 0.8);
+            border: 1px solid #2a2a38;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .progress-section .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #1a1a26;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            border-radius: 6px;
+            transition: width 0.4s, background 0.3s;
+            width: 0%;
+        }
+
+        .progress-bar-fill.warn {
+            background: linear-gradient(90deg, #f59e0b, #d97706);
+        }
+
+        .progress-bar-fill.error {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        #logs {
+            background: rgba(22, 22, 30, 0.8);
+            border: 1px solid #2a2a38;
+            border-radius: 12px;
+            padding: 12px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #1a1a26;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #999;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #555;
+            flex-shrink: 0;
+            font-family: 'Monaco', monospace;
+            font-size: 11px;
+        }
+
+        .log-entry.ok {
+            color: #22c55e;
+        }
+
+        .log-entry.warn {
+            color: #f59e0b;
+        }
+
+        .log-entry.error {
+            color: #ef4444;
+        }
+
+        .log-entry.info {
+            color: #818cf8;
+        }
+
+        #timer {
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+            padding: 8px 0;
+            transition: color 0.3s;
+        }
+
+        #timer.checking {
+            color: #818cf8;
+        }
+
+        #termination-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        #termination-overlay.show {
+            display: flex;
+        }
+
+        #termination-overlay h1 {
+            font-size: 48px;
+            color: #ef4444;
+            margin-bottom: 16px;
+        }
+
+        #termination-overlay p {
+            font-size: 16px;
+            color: #999;
+            max-width: 500px;
+            line-height: 1.8;
+            margin-bottom: 16px;
+        }
+
+        .termination-reason {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 16px 24px;
+            font-size: 14px;
+            color: #fca5a5;
+            max-width: 500px;
+        }
+
+        .termination-button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px 32px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .termination-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a38;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a48;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="topbar">
+        <div class="logo">
+            <span class="live-dot"></span>
+            <span>interview.ai</span>
+        </div>
+        <div id="health-pill">
+            <span>●</span>
+            <span id="health-text">Checking…</span>
+        </div>
+    </div>
+
+    <div id="welcome-screen">
+        <div class="welcome-card">
+            <h1>🎬 interview.ai</h1>
+            <p>Real-time AI-powered interview monitoring with facial recognition and environmental quality checks.</p>
+
+            <form id="welcome-form" onsubmit="startWelcome(event)">
+                <div class="form-group">
+                    <label for="full-name">Full Name</label>
+                    <input type="text" id="full-name" placeholder="Enter your full name" required>
+                </div>
+                <button type="submit" class="btn-primary">Continue</button>
+                <div id="welcome-error" class="error-text"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="reference-screen">
+        <div class="reference-container">
+            <h2>📷 Capture Reference</h2>
+            <p>We'll take a photo of you to verify your identity during the interview. Ensure good lighting and face the
+                camera directly.</p>
+
+            <div class="reference-preview">
+                <video id="reference-video" playsinline autoplay muted></video>
+            </div>
+
+            <button id="capture-btn" type="button" class="capture-button" onclick="captureReference(event)">
+                📸 Capture Reference Photo
+            </button>
+
+            <div class="instructions-list">
+                <h3>Capture Requirements</h3>
+                <ul>
+                    <li>Face clearly visible and centered</li>
+                    <li>Good lighting from the front</li>
+                    <li>Natural background or neutral wall</li>
+                    <li>Looking directly at camera</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="monitor-screen">
+        <div class="video-panel">
+            <video id="monitor-video" playsinline autoplay muted></video>
+            <div class="live-badge">
+                <span class="live-dot" style="width: 8px; height: 8px;"></span>
+                LIVE
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <div id="status-box">
+                <strong>Identity Status</strong>
+                <p id="status-text">Initializing…</p>
+            </div>
+
+            <div class="counters">
+                <div class="counter">
+                    <div class="value" id="check-count">0</div>
+                    <div class="label">Checks</div>
+                </div>
+                <div class="counter">
+                    <div class="value" id="warning-count">0</div>
+                    <div class="label">Warnings</div>
+                </div>
+                <div class="counter">
+                    <div class="value" id="fail-count">0</div>
+                    <div class="label">Failures</div>
+                </div>
+            </div>
+
+            <div class="progress-section">
+                <span class="label">Confidence <span id="confidence-pct">0</span>%</span>
+                <div class="progress-bar">
+                    <div id="confidence-fill" class="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <div class="progress-section">
+                <span class="label">Brightness</span>
+                <div class="progress-bar">
+                    <div id="brightness-fill" class="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <div id="timer"></div>
+
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <div id="termination-overlay">
+        <h1>⛔ Interview Terminated</h1>
+        <p>Your interview has been terminated due to policy violations.</p>
+        <div class="termination-reason" id="termination-reason">System policy violation detected</div>
+        <button class="termination-button">Start New Interview</button>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:5000";
+        const VERIFY_INTERVAL = 10000;
+        const VERIFY_FRAME_MAX_WIDTH = 640;
+        const REFERENCE_FRAME_MAX_WIDTH = 960;
+
+        let appState = {
+            candidateId: null,
+            candidateName: null,
+            referenceImage: null,
+            monitoring: false,
+            terminated: false,
+            isVerifying: false,
+            verifyIntervalId: null,
+            countdownIntervalId: null,
+            nextVerifyTime: 0,
+            referenceStream: null,
+            monitorStream: null,
+            currentPhase: 'welcome'
+        };
+
+        function canvasToBlob(canvas, mimeType = 'image/jpeg', quality = 0.92) {
+            return new Promise((resolve, reject) => {
+                try {
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('Canvas.toBlob failed'));
+                        }
+                    }, mimeType, quality);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        async function captureVideoFrameBlob(video, maxWidth, quality = 0.82) {
+            const sourceWidth = video.videoWidth;
+            const sourceHeight = video.videoHeight;
+            const scale = Math.min(1, maxWidth / sourceWidth);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(sourceWidth * scale);
+            canvas.height = Math.round(sourceHeight * scale);
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvasToBlob(canvas, 'image/jpeg', quality);
+        }
+
+        function logToUI(msg, cls = 'info') {
+            const logs = document.getElementById('logs');
+            if (!logs) return;
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${cls}`;
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="log-time">${time}</span> <span>${msg}</span>`;
+            logs.insertBefore(entry, logs.firstChild);
+
+            while (logs.children.length > 25) {
+                logs.removeChild(logs.lastChild);
+            }
+        }
+
+        async function checkBackendHealth() {
+            const pill = document.getElementById('health-pill');
+            const text = document.getElementById('health-text');
+            try {
+                const response = await fetch(`${API}/health`, { signal: AbortSignal.timeout(3000) });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                pill.classList.add('online');
+                pill.classList.remove('offline');
+                text.textContent = `Backend ✓ ${data.model || 'Online'}`;
+                return true;
+            } catch (error) {
+                pill.classList.remove('online');
+                pill.classList.add('offline');
+                text.textContent = 'Backend Offline';
+                return false;
+            }
+        }
+
+        function stopAllCameras() {
+            if (appState.referenceStream) {
+                appState.referenceStream.getTracks().forEach(t => t.stop());
+                appState.referenceStream = null;
+            }
+            if (appState.monitorStream) {
+                appState.monitorStream.getTracks().forEach(t => t.stop());
+                appState.monitorStream = null;
+            }
+        }
+
+        async function startReferenceCam() {
+            stopAllCameras();
+            try {
+                appState.referenceStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                const video = document.getElementById('reference-video');
+                video.srcObject = appState.referenceStream;
+                await new Promise(resolve => { video.onloadedmetadata = resolve; });
+                await video.play();
+                video.muted = true;
+                video.setAttribute("playsinline", true);
+                logToUI('✅ Reference camera started', 'ok');
+            } catch (error) {
+                console.error('Reference camera error:', error);
+                document.getElementById('welcome-error').textContent = 'Camera access denied. Please allow webcam access.';
+                logToUI('❌ Camera access denied', 'error');
+            }
+        }
+
+        async function startMonitorCam() {
+            stopAllCameras();
+            try {
+                appState.monitorStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                const video = document.getElementById('monitor-video');
+                video.srcObject = appState.monitorStream;
+                await new Promise(resolve => { video.onloadedmetadata = resolve; });
+                await video.play();
+                video.muted = true;
+                video.setAttribute("playsinline", true);
+                logToUI('📹 Monitor camera started', 'info');
+            } catch (error) {
+                console.error('Monitor camera error:', error);
+                logToUI('❌ Monitor camera failed', 'error');
+            }
+        }
+
+        async function startWelcome(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('full-name');
+            const name = nameInput.value.trim();
+            if (!name) {
+                document.getElementById('welcome-error').textContent = 'Please enter your full name';
+                return;
+            }
+
+            appState.candidateName = name;
+            appState.candidateId = `candidate_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            appState.currentPhase = 'reference';
+
+            console.log(`[WELCOME] Candidate registered: ${name}, ID: ${appState.candidateId}`);
+            logToUI(`✅ Candidate registered: ${name}`, 'info');
+
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('reference-screen').classList.add('active');
+
+            await startReferenceCam();
+        }
+
+        async function captureReference(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            console.log('🔴 [CAPTURE] Button clicked!');
+
+            const captureBtn = document.getElementById('capture-btn');
+            const video = document.getElementById('reference-video');
+
+            if (!video || !video.srcObject) {
+                console.error('[CAPTURE] ❌ Camera not ready');
+                logToUI('❌ Camera not ready', 'error');
+                return;
+            }
+
+            captureBtn.disabled = true;
+            captureBtn.textContent = '⏳ Processing…';
+
+            try {
+                console.log('[CAPTURE] 1. Capturing frame...');
+                console.log('[CAPTURE] 2. Converting to blob...');
+                const blob = await captureVideoFrameBlob(video, REFERENCE_FRAME_MAX_WIDTH, 0.9);
+
+                console.log('[CAPTURE] 3. Creating FormData...');
+                const formData = new FormData();
+                formData.append('candidate_id', appState.candidateId);
+                formData.append('candidate_name', appState.candidateName);
+                formData.append('file', blob, 'reference.jpg');
+
+                console.log(`[CAPTURE] 4. Sending POST to ${API}/start_interview`);
+                const response = await fetch(`${API}/start_interview`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log(`[CAPTURE] Response status: ${response.status}`);
+                const data = await response.json();
+                console.log('[CAPTURE] Parsed JSON:', data);
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || `HTTP Error ${response.status}`);
+                }
+
+                console.log('[CAPTURE] ✓ SUCCESS!');
+                appState.referenceImage = blob;
+                appState.candidateId = data.candidate_id || appState.candidateId;
+
+                document.querySelector('.reference-preview').classList.add('has-capture');
+                logToUI(`✅ Reference captured successfully`, 'ok');
+
+                captureBtn.textContent = '✅ Success!';
+
+                console.log('[CAPTURE] Transitioning to monitor screen...');
+                await startInterview();
+
+            } catch (error) {
+                console.error('❌ [CAPTURE] ERROR:', error);
+                logToUI(`❌ Capture failed: ${error.message}`, 'error');
+                captureBtn.disabled = false;
+                captureBtn.textContent = '📸 Capture Reference Photo';
+            }
+        }
+
+        async function startInterview() {
+            console.log('🟢 [START_INTERVIEW] Beginning...');
+
+            if (!appState.candidateId) {
+                console.error('❌ No candidate ID');
+                return;
+            }
+
+            appState.currentPhase = 'monitor';
+
+            document.getElementById('reference-screen').classList.remove('active');
+            document.getElementById('monitor-screen').classList.add('active');
+
+            try {
+                await startMonitorCam();
+                console.log('[START_INTERVIEW] Monitor camera started');
+
+                appState.monitoring = true;
+                appState.terminated = false;
+                appState.isVerifying = false;
+
+                logToUI('🎯 Monitoring session started', 'ok');
+                beginMonitoring();
+            } catch (error) {
+                console.error("❌ [START_INTERVIEW] Error:", error);
+                logToUI('❌ Failed to start monitoring camera', 'error');
+            }
+        }
+
+        function beginMonitoring() {
+            console.log('[MONITOR] Starting loops...');
+            if (appState.verifyIntervalId) clearInterval(appState.verifyIntervalId);
+            if (appState.countdownIntervalId) clearInterval(appState.countdownIntervalId);
+
+            appState.nextVerifyTime = Date.now() + VERIFY_INTERVAL;
+
+            performVerification();
+
+            appState.verifyIntervalId = setInterval(() => {
+                if (!appState.isVerifying && !appState.terminated && appState.monitoring) {
+                    performVerification();
+                }
+            }, VERIFY_INTERVAL);
+
+            appState.countdownIntervalId = setInterval(updateCountdown, 1000);
+        }
+
+        function updateCountdown() {
+            if (!appState.monitoring || appState.terminated) return;
+
+            const now = Date.now();
+            const timeUntilNext = Math.max(0, appState.nextVerifyTime - now);
+            const secondsLeft = Math.ceil(timeUntilNext / 1000);
+            const timerEl = document.getElementById('timer');
+
+            if (appState.isVerifying) {
+                timerEl.textContent = '⏳ Verifying…';
+                timerEl.classList.add('checking');
+            } else {
+                timerEl.classList.remove('checking');
+                timerEl.textContent = `⏱ Next check in ${secondsLeft}s`;
+            }
+        }
+
+        async function performVerification() {
+            if (appState.isVerifying || !appState.monitoring || appState.terminated) return;
+
+            appState.isVerifying = true;
+            appState.nextVerifyTime = Date.now() + VERIFY_INTERVAL;
+            updateCountdown();
+
+            try {
+                const video = document.getElementById('monitor-video');
+                if (!video || !video.srcObject || video.videoWidth === 0) {
+                    throw new Error('Video not ready');
+                }
+
+                const frameBlob = await captureVideoFrameBlob(video, VERIFY_FRAME_MAX_WIDTH, 0.82);
+
+                const formData = new FormData();
+                formData.append('candidate_id', appState.candidateId);
+                formData.append('file', frameBlob, 'frame.jpg');
+
+                console.log(`🔍 [VERIFY] POST ${API}/verify_frame`);
+                const response = await fetch(`${API}/verify_frame`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const result = await response.json();
+                console.log('🔍 [VERIFY] Result:', result);
+                handleVerificationResult(result);
+
+            } catch (error) {
+                console.error("❌ [VERIFY] Error:", error);
+                document.getElementById('status-text').textContent = '⚠️ Backend connection lost';
+                logToUI('⚠️ Backend connection lost', 'error');
+            } finally {
+                appState.isVerifying = false;
+                appState.nextVerifyTime = Date.now() + VERIFY_INTERVAL;
+                updateCountdown();
+            }
+        }
+
+        function handleVerificationResult(result) {
+            if (!result || appState.terminated) return;
+
+            const {
+                status = 'unknown',
+                confidence = 0,
+                brightness = 0,
+                verified = false,
+                warning_count = 0,
+                fail_streak = 0,
+                check_count = 0,
+                terminate = false,
+                reason = '',
+                timestamp = new Date().toISOString()
+            } = result;
+
+            updateCounterUI('check-count', check_count);
+            updateCounterUI('warning-count', warning_count, warning_count >= 2 ? 'warning' : '');
+            updateCounterUI('fail-count', fail_streak, fail_streak >= 1 ? 'error' : '');
+
+            const confRounded = Math.round(confidence);
+            document.getElementById('confidence-pct').textContent = confRounded;
+            const confFill = document.getElementById('confidence-fill');
+            confFill.style.width = Math.max(0, Math.min(100, confRounded)) + '%';
+            confFill.className = 'progress-bar-fill';
+
+            if (verified || confRounded >= 80) confFill.classList.add('ok');
+            else if (confRounded >= 55) confFill.classList.add('warn');
+            else confFill.classList.add('error');
+
+            const brightPct = (brightness / 255) * 100;
+            const brightFill = document.getElementById('brightness-fill');
+            brightFill.style.width = Math.max(0, Math.min(100, brightPct)) + '%';
+            brightFill.className = 'progress-bar-fill';
+
+            if (brightness < 20 || brightness > 242) brightFill.classList.add('error');
+            else if (brightness < 40 || brightness > 220) brightFill.classList.add('warn');
+            else brightFill.classList.add('ok');
+
+            const statusLabel = getStatusLabel(status);
+            const statusBox = document.getElementById('status-box');
+            const video = document.getElementById('monitor-video');
+            document.getElementById('status-text').textContent = statusLabel;
+
+            statusBox.classList.remove('ok', 'warn', 'error');
+            video.classList.remove('ok', 'warn', 'error');
+
+            if (verified && confRounded >= 80) {
+                statusBox.classList.add('ok');
+                video.classList.add('ok');
+            } else if (confRounded >= 55 || status.includes('warn')) {
+                statusBox.classList.add('warn');
+                video.classList.add('warn');
+            } else {
+                statusBox.classList.add('error');
+                video.classList.add('error');
+            }
+
+            const time = new Date(timestamp).toLocaleTimeString();
+            let logClass = 'info';
+            if (verified && confRounded >= 80) logClass = 'ok';
+            else if (confRounded >= 55 || warning_count > 0) logClass = 'warn';
+            else if (!verified || confRounded < 40) logClass = 'error';
+
+            const message = reason || statusLabel;
+            logToUI(`${time} — ${message}`, logClass);
+
+            if (terminate) {
+                handleTermination(warning_count, fail_streak, reason);
+            }
+        }
+
+        function handleTermination(warnings, fails, customReason) {
+            appState.monitoring = false;
+            appState.terminated = true;
+            appState.currentPhase = 'terminated';
+
+            if (appState.verifyIntervalId) clearInterval(appState.verifyIntervalId);
+            if (appState.countdownIntervalId) clearInterval(appState.countdownIntervalId);
+
+            stopAllCameras();
+
+            let reason = customReason || (warnings >= 3 ? '⚠️ Too many environmental warnings (3+)' :
+                (fails >= 3 ? '❌ Too many identity verification failures (3+)' : '🛑 Policy violation detected'));
+
+            document.getElementById('monitor-screen').classList.remove('active');
+            document.getElementById('termination-reason').textContent = reason;
+            document.getElementById('termination-overlay').classList.add('show');
+
+            logToUI(reason, 'error');
+        }
+
+        function updateCounterUI(elementId, value, addClass = '') {
+            const el = document.getElementById(elementId);
+            el.textContent = value;
+            el.className = 'value';
+            if (addClass) el.classList.add(addClass);
+        }
+
+        function getStatusLabel(status) {
+            const statusMap = {
+                'pass': '✅ Identity Verified',
+                'Strong Match': '✅ Strong Match',
+                'Possible Match': '⚠️ Possible Match',
+                'Weak Match': '⚠️ Weak Match',
+                'No Match': '❌ No Match',
+                'too_dark': '🌑 Too Dark - Adjust Lighting',
+                'too_bright': '☀️ Too Bright - Reduce Glare',
+                'no_face': '👤 No Face Detected',
+                'multiple_faces': '❌ Multiple Faces Detected',
+                'side_face': '👈 Looking Away - Face Camera',
+                'face_not_centered': '🎯 Not Centered - Adjust Position',
+                'identity_mismatch': '❌ Identity Mismatch',
+                'terminated': '🛑 Interview Terminated'
+            };
+            return statusMap[status] || (`⚠️ ${status}`);
+        }
+
+        function restartSession() {
+            console.log('🔄 [RESTART] Resetting session...');
+
+            if (appState.verifyIntervalId) clearInterval(appState.verifyIntervalId);
+            if (appState.countdownIntervalId) clearInterval(appState.countdownIntervalId);
+
+            stopAllCameras();
+
+            appState = {
+                candidateId: null,
+                candidateName: null,
+                referenceImage: null,
+                monitoring: false,
+                terminated: false,
+                isVerifying: false,
+                verifyIntervalId: null,
+                countdownIntervalId: null,
+                nextVerifyTime: 0,
+                referenceStream: null,
+                monitorStream: null,
+                currentPhase: 'welcome'
+            };
+
+            document.getElementById('reference-screen').classList.remove('active');
+            document.getElementById('monitor-screen').classList.remove('active');
+            document.getElementById('termination-overlay').classList.remove('show');
+
+            document.getElementById('welcome-screen').classList.remove('hidden');
+
+            document.getElementById('full-name').value = '';
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('welcome-error').textContent = '';
+
+            document.querySelector('.reference-preview').classList.remove('has-capture');
+            const captureBtn = document.getElementById('capture-btn');
+            captureBtn.disabled = false;
+            captureBtn.textContent = '📸 Capture Reference Photo';
+
+            updateCounterUI('check-count', 0);
+            updateCounterUI('warning-count', 0);
+            updateCounterUI('fail-count', 0);
+            document.getElementById('confidence-pct').textContent = '0';
+            document.getElementById('confidence-fill').style.width = '0%';
+            document.getElementById('brightness-fill').style.width = '0%';
+
+            logToUI('🔄 Session restarted', 'info');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const captureBtn = document.getElementById('capture-btn');
+            if (!captureBtn.onclick) {
+                captureBtn.addEventListener('click', captureReference);
+            }
+
+            const restartBtn = document.querySelector('.termination-button');
+            restartBtn.addEventListener('click', restartSession);
+
+            console.log('═════════════════════════════════════════════');
+            console.log('🟢 [INIT] Page loaded - checking backend health');
+            console.log('═════════════════════════════════════════════');
+            checkBackendHealth();
+            setInterval(checkBackendHealth, 8000);
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,95 @@
+AI Interview Monitoring System - Local Setup Instructions
+
+This guide explains how to clone this GitHub repository and run it locally.
+
+
+Requirements
+------------
+1. Git installed
+2. Python 3.10 or newer installed
+3. A webcam-enabled computer/browser
+4. Internet access for the first dependency install
+
+
+Clone the Repository
+--------------------
+Open Command Prompt, PowerShell, or Git Bash and run:
+
+git clone https://github.com/Satwikpaladugu/ai-interview-monitoring-system.git
+
+Then move into the project folder:
+
+cd ai-interview-monitoring-system
+
+
+Create and Activate a Virtual Environment
+-----------------------------------------
+On Windows PowerShell:
+
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+On Windows Command Prompt:
+
+python -m venv venv
+venv\Scripts\activate.bat
+
+On macOS/Linux:
+
+python3 -m venv venv
+source venv/bin/activate
+
+
+Install Dependencies
+--------------------
+After the virtual environment is activated, install the required Python packages:
+
+pip install -r requirements.txt
+
+The first install may take a while because this project uses computer vision and face recognition packages.
+
+
+Run the Project on Windows
+--------------------------
+The easiest way on Windows is to double-click:
+
+run.bat
+
+Or run it from the terminal:
+
+.\run.bat
+
+This starts:
+1. FastAPI backend at http://127.0.0.1:5000
+2. Frontend server at http://localhost:3000
+3. Browser window at http://localhost:3000
+
+
+Run the Project Manually
+------------------------
+If you do not use run.bat, open two terminals in the project folder.
+
+Terminal 1 - start the FastAPI backend:
+
+python app.py
+
+Terminal 2 - start the frontend server:
+
+python -m http.server 3000
+
+Then open this URL in your browser:
+
+http://localhost:3000
+
+
+Stopping the Project
+--------------------
+To stop the servers, press Ctrl+C in each terminal window.
+
+
+Notes
+-----
+1. Allow camera permission in the browser when prompted.
+2. The backend must stay running for face verification features to work.
+3. Generated uploads and logs are stored in the uploads and logs folders.
+4. If port 3000 or 5000 is already in use, stop the other program using that port before running this project.
