@@ -1,5 +1,9 @@
-import io
+import sys
+import os
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+import io
 import cv2
 import numpy as np
 import pytest
@@ -7,7 +11,6 @@ from fastapi.testclient import TestClient
 
 import app_fastapi
 from app_fastapi import app, candidate_store, session_state
-
 
 client = TestClient(app)
 

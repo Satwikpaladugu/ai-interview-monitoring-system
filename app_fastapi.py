@@ -164,14 +164,20 @@ def ensure_session_state(candidate_id):
     return session_state[candidate_id]
 
 
-def apply_warning_termination(candidate_id, result):
+def apply_warning_termination(candidate_id, result, img=None):
     state = session_state[candidate_id]
     if state["warning_count"] >= MAX_WARNINGS:
         state["terminated"] = True
         result["terminate"] = True
         result["reason"] = "Too many warnings"
         log_check(candidate_id, result)
-        admin_db.save_reference_as_evidence(candidate_id)
+        admin_db.delete_reference_photo(candidate_id)
+        if img is not None:
+            term_path = os.path.join(UPLOAD_FOLDER, f"termination_{candidate_id}.jpg")
+            cv2.imwrite(term_path, img)
+            admin_db.store_evidence(candidate_id, term_path, "termination_photo")
+            if os.path.exists(term_path):
+                os.remove(term_path)
 
 
 @app.get("/health")
@@ -336,7 +342,7 @@ async def verify_frame(candidate_id: str = Form(None), file: UploadFile = File(N
         timings["total_ms"] = round((time.perf_counter() - request_start) * 1000, 1)
         result["timings"] = timings
         log_check(candidate_id, result)
-        apply_warning_termination(candidate_id, result)
+        apply_warning_termination(candidate_id, result, img)
         result["suggestions"] = [
             "Turn on more lights" if bright_label == "too_dark" else "Reduce glare/brightness"
         ]
@@ -363,7 +369,7 @@ async def verify_frame(candidate_id: str = Form(None), file: UploadFile = File(N
         timings["total_ms"] = round((time.perf_counter() - request_start) * 1000, 1)
         result["timings"] = timings
         log_check(candidate_id, result)
-        apply_warning_termination(candidate_id, result)
+        apply_warning_termination(candidate_id, result, img)
         result["suggestions"] = ["Ensure your face is visible to the camera"]
         print(json.dumps(result, indent=2))
         return result
@@ -384,7 +390,7 @@ async def verify_frame(candidate_id: str = Form(None), file: UploadFile = File(N
         timings["total_ms"] = round((time.perf_counter() - request_start) * 1000, 1)
         result["timings"] = timings
         log_check(candidate_id, result)
-        apply_warning_termination(candidate_id, result)
+        apply_warning_termination(candidate_id, result, img)
         result["suggestions"] = ["Only the candidate should be visible to the camera"]
         print(json.dumps(result, indent=2))
         return result
@@ -420,7 +426,7 @@ async def verify_frame(candidate_id: str = Form(None), file: UploadFile = File(N
         timings["total_ms"] = round((time.perf_counter() - request_start) * 1000, 1)
         result["timings"] = timings
         log_check(candidate_id, result)
-        apply_warning_termination(candidate_id, result)
+        apply_warning_termination(candidate_id, result, img)
 
         suggestions = []
         if too_small:
@@ -458,7 +464,7 @@ async def verify_frame(candidate_id: str = Form(None), file: UploadFile = File(N
         timings["total_ms"] = round((time.perf_counter() - request_start) * 1000, 1)
         result["timings"] = timings
         log_check(candidate_id, result)
-        apply_warning_termination(candidate_id, result)
+        apply_warning_termination(candidate_id, result, img)
         result["suggestions"] = ["Look directly at the camera"]
         print(json.dumps(result, indent=2))
         return result
@@ -482,13 +488,23 @@ async def verify_frame(candidate_id: str = Form(None), file: UploadFile = File(N
         state["terminated"] = True
         terminate = True
         reason = "Identity verification failed repeatedly"
-        admin_db.save_reference_as_evidence(candidate_id)
+        admin_db.delete_reference_photo(candidate_id)
+        term_path = os.path.join(UPLOAD_FOLDER, f"termination_{candidate_id}.jpg")
+        cv2.imwrite(term_path, img)
+        admin_db.store_evidence(candidate_id, term_path, "termination_photo")
+        if os.path.exists(term_path):
+            os.remove(term_path)
 
     if state["warning_count"] >= MAX_WARNINGS:
         state["terminated"] = True
         terminate = True
         reason = "Too many warnings"
-        admin_db.save_reference_as_evidence(candidate_id)
+        admin_db.delete_reference_photo(candidate_id)
+        term_path = os.path.join(UPLOAD_FOLDER, f"termination_{candidate_id}.jpg")
+        cv2.imwrite(term_path, img)
+        admin_db.store_evidence(candidate_id, term_path, "termination_photo")
+        if os.path.exists(term_path):
+            os.remove(term_path)
 
     result = build_result(
         candidate_id,
@@ -527,7 +543,7 @@ def terminate_interview(
         return api_error("Session not found", status_code=404)
 
     session_state[candidate_id]["terminated"] = True
-    admin_db.save_reference_as_evidence(candidate_id)
+    admin_db.delete_reference_photo(candidate_id)
 
     return {
         "success": True,

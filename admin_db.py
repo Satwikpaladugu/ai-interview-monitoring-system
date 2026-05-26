@@ -91,15 +91,13 @@ class AdminDatabase:
             if os.path.exists(evidence_path):
                 shutil.rmtree(evidence_path)
 
-            # Move reference photo to evidence archive instead of deleting it
+            # Delete reference photo if it still exists
             ref_path = os.path.join(self.uploads_folder, f"reference_{candidate_id}.jpg")
             if os.path.exists(ref_path):
                 try:
-                    archive_dir = os.path.join(self.evidence_folder, "_archived_references")
-                    os.makedirs(archive_dir, exist_ok=True)
-                    shutil.move(ref_path, os.path.join(archive_dir, f"reference_{candidate_id}.jpg"))
+                    os.remove(ref_path)
                 except Exception as e:
-                    print(f"[CLEANUP] Could not archive reference photo: {e}")
+                    print(f"[CLEANUP] Error deleting reference photo: {e}")
 
             # Remove last frame if present
             last_frame_path = os.path.join(self.uploads_folder, f"last_frame_{candidate_id}.jpg")
@@ -153,11 +151,15 @@ class AdminDatabase:
         print(f"[EVIDENCE] Stored: {dest_path}")
         return True
 
-    def save_reference_as_evidence(self, candidate_id):
-        """Copy the reference photo into the evidence folder on interview termination."""
+    def delete_reference_photo(self, candidate_id):
+        """Delete the reference photo from the uploads folder."""
         ref_path = os.path.join(self.uploads_folder, f"reference_{candidate_id}.jpg")
         if os.path.exists(ref_path):
-            return self.store_evidence(candidate_id, ref_path, "reference_photo")
+            try:
+                os.remove(ref_path)
+                return True
+            except Exception as e:
+                print(f"[CLEANUP] Error deleting reference photo: {e}")
         return False
     
     def get_evidence_photos(self, candidate_id):
